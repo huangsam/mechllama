@@ -12,6 +12,7 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.3.0",
     "chromadb>=0.5.0",
     "pandas>=2.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.ruff]

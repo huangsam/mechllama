@@ -14,6 +14,26 @@ Ask questions about mechanical keyboard switches and get AI-powered answers base
 git clone <repository-url>
 cd llama-trial
 uv sync
+
+# Optional: Configure environment variables
+cp .env.example .env
+# Edit .env with your preferred settings (never commit .env to version control)
+```
+
+## Configuration
+
+The application supports configuration via environment variables. Copy `.env.example` to `.env` and modify as needed:
+
+- **OLLAMA_BASE_URL**: Ollama server URL (default: http://localhost:11434)
+- **OLLAMA_EMBEDDING_MODEL**: Embedding model name (default: bge-m3)
+- **OLLAMA_LLM_MODEL**: LLM model name (default: deepseek-r1:latest)
+- **OLLAMA_TIMEOUT**: Request timeout in seconds (default: 120.0)
+- **OLLAMA_CONTEXT_WINDOW**: Context window size (default: 128000)
+- **CHROMA_HOST**: ChromaDB server host (default: localhost)
+- **CHROMA_PORT**: ChromaDB server port (default: 8000)
+
+### Setup Data
+```bash
 uv run python main.py ingest  # Index switch data
 ```
 

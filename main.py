@@ -12,12 +12,14 @@ push feel, wobble, sound, context, other factors, and score tables.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import chromadb
 import click
 import pandas as pd
+from dotenv import load_dotenv
 from llama_index.core import PromptTemplate, Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.core.response_synthesizers import CompactAndRefine
 from llama_index.core.schema import TextNode
@@ -30,13 +32,35 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Global LlamaIndex settings for embeddings and LLM
 # Using Ollama for local, private processing without external API calls
 # bge-m3: High-quality multilingual embedding model (1024 dimensions) optimized for text retrieval
 # deepseek-r1: Advanced reasoning model with 128K context window for comprehensive analysis
 # 120s timeout: Allows sufficient time for complex reasoning tasks
-Settings.embed_model = OllamaEmbedding(model_name="bge-m3", base_url="http://localhost:11434")
-Settings.llm = Ollama(model="deepseek-r1:latest", request_timeout=120.0, context_window=128000)
+Settings.embed_model = OllamaEmbedding(
+    model_name=os.getenv("OLLAMA_EMBEDDING_MODEL", "bge-m3"),
+    base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+)
+Settings.llm = Ollama(
+    model=os.getenv("OLLAMA_LLM_MODEL", "deepseek-r1:latest"),
+    request_timeout=float(os.getenv("OLLAMA_TIMEOUT", "120.0")),
+    context_window=int(os.getenv("OLLAMA_CONTEXT_WINDOW", "128000"))
+)
+
+
+def get_chroma_client() -> chromadb.HttpClient:
+    """
+    Create and return a ChromaDB HTTP client with configurable host and port.
+
+    Returns:
+        Configured ChromaDB HttpClient instance
+    """
+    host = os.getenv("CHROMA_HOST", "localhost")
+    port = int(os.getenv("CHROMA_PORT", "8000"))
+    return chromadb.HttpClient(host=host, port=port)
 
 
 @click.group()
@@ -80,7 +104,7 @@ def ingest(data_dir: str, csv_path: str, collection_name: str, batch_size: int) 
     CSV enrichment ensures both qualitative descriptions and quantitative scores are available.
     """
     # Initialize ChromaDB HTTP client for server-mode persistence
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+    chroma_client = get_chroma_client()
     try:
         chroma_client.heartbeat()  # Verify ChromaDB server is accessible
     except Exception as e:
@@ -210,7 +234,7 @@ def search(query: str, collection_name: str, top_k: int) -> None:
     based on vector similarity (cosine distance). Useful for finding
     switches with specific characteristics without LLM synthesis.
     """
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+    chroma_client = get_chroma_client()
     chroma_collection = chroma_client.get_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     # Reconstruct index from persisted vector store
@@ -338,7 +362,7 @@ def query(query: str, collection_name: str, top_k: int) -> None:
       "Which switches have the highest sound scores?" → Filtered search
       "Tell me about linear switches" → Unfiltered search
     """
-    chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+    chroma_client = get_chroma_client()
     chroma_collection = chroma_client.get_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store)

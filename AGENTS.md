@@ -83,17 +83,37 @@ uv run pytest --cov=main --cov-report=html
 
 ## Configuration
 
+### Environment Variables
+
+The application uses python-dotenv to load configuration from a `.env` file. All configuration is now environment-variable driven for better deployment flexibility:
+
+```bash
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434          # Ollama server URL
+OLLAMA_EMBEDDING_MODEL=bge-m3                   # Embedding model name
+OLLAMA_LLM_MODEL=deepseek-r1:latest            # LLM model name
+OLLAMA_TIMEOUT=120.0                           # Request timeout in seconds
+OLLAMA_CONTEXT_WINDOW=128000                   # Context window size
+
+# ChromaDB Configuration
+CHROMA_HOST=localhost                          # ChromaDB server host
+CHROMA_PORT=8000                               # ChromaDB server port
+```
+
 ### LlamaIndex Settings
+
+Settings are now loaded from environment variables with sensible defaults:
+
 ```python
-# Global settings in main.py
+# In main.py - now configurable via environment variables
 Settings.embed_model = OllamaEmbedding(
-    model_name="bge-m3",
-    base_url="http://localhost:11434"
+    model_name=os.getenv("OLLAMA_EMBEDDING_MODEL", "bge-m3"),
+    base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 )
 Settings.llm = Ollama(
-    model="deepseek-r1:latest",
-    request_timeout=120.0,
-    context_window=128000
+    model=os.getenv("OLLAMA_LLM_MODEL", "deepseek-r1:latest"),
+    request_timeout=float(os.getenv("OLLAMA_TIMEOUT", "120.0")),
+    context_window=int(os.getenv("OLLAMA_CONTEXT_WINDOW", "128000"))
 )
 ```
 
@@ -206,11 +226,20 @@ ollama run deepseek-r1 "Hello"
 - Set appropriate timeouts for production workloads
 - Monitor memory usage and scale accordingly
 
+## Deployment
+
+### Production Setup
+- Use production ChromaDB instance (not localhost)
+- Configure Ollama with GPU acceleration if available
+- Set appropriate timeouts for production workloads
+- Monitor memory usage and scale accordingly
+
 ### Environment Variables
 ```bash
 # Optional environment configuration
 export CHROMA_HOST=production-chroma.example.com
 export OLLAMA_BASE_URL=http://production-ollama:11434
+# ... other variables as needed
 ```
 
 ## License
