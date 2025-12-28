@@ -11,6 +11,7 @@ dependencies = [
     "llama-index-embeddings-ollama>=0.5.0",
     "llama-index-vector-stores-chroma>=0.3.0",
     "chromadb>=0.5.0",
+    "pandas>=2.0.0",
 ]
 
 [tool.ruff]
@@ -18,9 +19,11 @@ line-length = 160
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "C", "Q"]
+extend-ignore = ["C901"]
 
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "pytest>=9.0.2",
     "ruff>=0.14.10",
 ]
