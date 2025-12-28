@@ -34,7 +34,7 @@ This document contains technical details, development setup, testing, and config
 ### Installation
 ```bash
 git clone <repository-url>
-cd llama-trial
+cd mechllama
 uv sync --group dev  # Includes testing and linting tools
 ```
 

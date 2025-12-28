@@ -12,7 +12,7 @@ Ask questions about mechanical keyboard switches and get AI-powered answers base
 ### Install & Setup
 ```bash
 git clone <repository-url>
-cd llama-trial
+cd mechllama
 uv sync
 
 # Optional: Configure environment variables
