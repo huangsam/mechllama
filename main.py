@@ -85,7 +85,7 @@ def cli() -> None:
 @click.option("--data-dir", default="datalake/switch-scores", help="Directory containing PDF files.")
 @click.option("--csv-path", default="datalake/switch-scores/1-Composite Overall Total Score Sheet.csv", help="Path to the CSV file with switch scores.")
 @click.option("--collection-name", default="switch_scores", help="ChromaDB collection name.")
-@click.option("--batch-size", default=10, help="Number of PDFs to process per batch.")
+@click.option("--batch-size", default=20, help="Number of PDFs to process per batch.")
 def ingest(data_dir: str, csv_path: str, collection_name: str, batch_size: int) -> None:
     """
     Ingest PDF files into ChromaDB vector index in batches, enriched with CSV scores.
