@@ -16,9 +16,9 @@ from typing import List, cast
 
 import chromadb
 import click
-from llama_index.core import Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex, PromptTemplate
+from llama_index.core import PromptTemplate, Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex
 from llama_index.core.response_synthesizers import CompactAndRefine
-from llama_index.core.response_synthesizers.type import ResponseMode
+from llama_index.core.schema import TextNode
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
@@ -128,7 +128,8 @@ def search(query: str, collection_name: str, top_k: int) -> None:
     results = retriever.retrieve(query)
     for i, result in enumerate(results):
         # Log first 200 characters of each result for preview
-        logger.info(f"Result {i + 1}: {cast(str, result.node.text)[:200]}...")
+        text_node = cast(TextNode, result.node)
+        logger.info(f"Result {i + 1}: {cast(str, text_node.text)[:200]}...")
 
 
 @cli.command()
