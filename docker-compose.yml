@@ -1,0 +1,19 @@
+services:
+  chroma:
+    image: chromadb/chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/data
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    networks:
+      - chroma_network
+
+volumes:
+  chroma_data:
+
+networks:
+  chroma_network:
+    driver: bridge
