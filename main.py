@@ -43,18 +43,19 @@ def cli() -> None:
 @cli.command()
 @click.option("--data-dir", default="datalake/switch-scores", help="Directory containing PDF files.")
 @click.option("--collection-name", default="switch_scores", help="ChromaDB collection name.")
-def ingest(data_dir: str, collection_name: str) -> None:
+@click.option("--batch-size", default=10, help="Number of PDFs to process per batch.")
+def ingest(data_dir: str, collection_name: str, batch_size: int) -> None:
     """
-    Ingest PDF files into ChromaDB vector index.
+    Ingest PDF files into ChromaDB vector index in batches.
 
     This command:
     1. Connects to ChromaDB server running on localhost:8000
     2. Creates or retrieves a collection for storing vectors
-    3. Loads PDF documents, extracting text content
-    4. Embeds the text using bge-m3 via Ollama
+    3. Loads PDF documents in batches, extracting text content
+    4. Embeds the text using bge-m3 via Ollama and adds to index incrementally
     5. Stores embeddings in ChromaDB for later retrieval
 
-    Failed PDFs are logged as warnings and skipped to ensure pipeline robustness.
+    Failed PDFs are logged as warnings and skipped. Batching helps with memory management.
     """
     # Initialize ChromaDB HTTP client for server-mode persistence
     chroma_client = chromadb.HttpClient(host="localhost", port=8000)
@@ -69,25 +70,37 @@ def ingest(data_dir: str, collection_name: str) -> None:
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    documents: List = []
     # Use SimpleDirectoryReader to scan directory for PDFs
     # required_exts ensures only PDF files are processed
     reader = SimpleDirectoryReader(data_dir, required_exts=[".pdf"])
-    for file_path in reader.input_files:
-        try:
-            # Load individual PDF to handle parsing errors per file
-            docs = SimpleDirectoryReader(input_files=[file_path]).load_data()
-            documents.extend(docs)
-            logger.info(f"Loaded {file_path}")
-        except Exception as e:
-            logger.warning(f"Failed to load {file_path}: {e}")
+    total_files = len(reader.input_files)
+    logger.info(f"Found {total_files} PDF files to process in batches of {batch_size}.")
 
-    if documents:
-        # Create vector index from documents; embeddings are generated here
-        _ = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
-        logger.info(f"Ingested {len(documents)} documents into collection '{collection_name}'")
-    else:
-        logger.warning("No documents loaded.")
+    for i in range(0, total_files, batch_size):
+        batch_files = reader.input_files[i : i + batch_size]
+        documents: List = []
+        for file_path in batch_files:
+            try:
+                # Load individual PDF to handle parsing errors per file
+                docs = SimpleDirectoryReader(input_files=[file_path]).load_data()
+                documents.extend(docs)
+                logger.info(f"Loaded {file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to load {file_path}: {e}")
+
+        if documents:
+            # Create or update vector index with batch; embeddings are generated here
+            if i == 0:
+                # First batch: create new index
+                index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+            else:
+                # Subsequent batches: add to existing index
+                index.insert_nodes(documents)
+            logger.info(f"Processed batch {i // batch_size + 1}: ingested {len(documents)} documents.")
+        else:
+            logger.warning(f"No documents in batch {i // batch_size + 1}.")
+
+    logger.info(f"Ingested all documents into collection '{collection_name}'")
 
 
 @cli.command()
