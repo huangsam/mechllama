@@ -14,13 +14,14 @@ push feel, wobble, sound, context, other factors, and score tables.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 import chromadb
 import click
 import pandas as pd
 from dotenv import load_dotenv
 from llama_index.core import PromptTemplate, Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex
+from llama_index.core.query_engine import BaseQueryEngine
 from llama_index.core.response_synthesizers import CompactAndRefine
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.ollama import OllamaEmbedding
@@ -50,12 +51,12 @@ Settings.llm = Ollama(
 )
 
 
-def get_chroma_client() -> chromadb.HttpClient:
+def get_chroma_client() -> Any:
     """
     Create and return a ChromaDB HTTP client with configurable host and port.
 
     Returns:
-        Configured ChromaDB HttpClient instance
+        Configured ChromaDB HTTP client instance
     """
     host = os.getenv("CHROMA_HOST", "localhost")
     port = int(os.getenv("CHROMA_PORT", "8000"))
@@ -105,7 +106,8 @@ def ingest(data_dir: str, csv_path: str, collection_name: str, batch_size: int) 
     # Initialize ChromaDB HTTP client for server-mode persistence
     chroma_client = get_chroma_client()
     try:
-        chroma_client.heartbeat()  # Verify ChromaDB server is accessible
+        # Verify ChromaDB server is accessible by listing collections
+        chroma_client.list_collections()
     except Exception as e:
         logger.error(f"ChromaDB not running: {e}")
         return
@@ -251,7 +253,7 @@ def search(query: str, collection_name: str, top_k: int) -> None:
         logger.info(f"Result {i + 1}: {cast(str, text_node.text)[:200]}...")
 
 
-def get_score_filter(query: str) -> Optional[Dict[str, Any]]:
+def get_score_filter(query: str) -> Optional[Union[Dict[str, Any], Dict[str, Dict[str, Any]]]]:
     """
     Extract metadata filter from query based on score ranges.
 
@@ -319,19 +321,21 @@ def get_score_filter(query: str) -> Optional[Dict[str, Any]]:
     }
 
     query_lower = query.lower()
-    where_clause = None
+    where_clause: Optional[Union[Dict[str, Any], Dict[str, Dict[str, Any]]]] = None
 
     for _, config in SCORE_CONFIG.items():
-        if any(keyword in query_lower for keyword in config["keywords"]):
+        if any(keyword in query_lower for keyword in cast(List[str], config["keywords"])):
             # Check for ranking adjectives
             if any(word in query_lower for word in ["highest", "best", "top"]):
-                where_clause = {config["field"]: config["ranges"]["highest"]}
+                ranges_dict = cast(Dict[str, Any], config["ranges"])
+                where_clause = {cast(str, config["field"]): ranges_dict["highest"]}
                 break
             elif any(word in query_lower for word in ["mid", "medium", "middle", "average"]):
-                where_clause = config["ranges"]["mid"]
+                where_clause = cast(Dict[str, Any], config["ranges"])["mid"]
                 break
             elif any(word in query_lower for word in ["lowest", "worst", "bottom"]):
-                where_clause = {config["field"]: config["ranges"]["lowest"]}
+                ranges_dict = cast(Dict[str, Any], config["ranges"])
+                where_clause = {cast(str, config["field"]): ranges_dict["lowest"]}
                 break
 
     return where_clause
@@ -409,6 +413,7 @@ def query(query: str, collection_name: str, top_k: int) -> None:
     # - If score filtering detected: Use RetrieverQueryEngine with metadata pre-filtering
     # - If no filtering needed: Use standard query engine for full collection search
     # This optimizes performance by reducing context size for analytical queries
+    query_engine: BaseQueryEngine
     if where_clause:
         from llama_index.core.query_engine import RetrieverQueryEngine
 
