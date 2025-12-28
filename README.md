@@ -1,4 +1,4 @@
-# Mechanical Keyboard Switch Analysis CLI
+# Mechllama
 
 Ask questions about mechanical keyboard switches and get AI-powered answers based on comprehensive reviews and scores.
 

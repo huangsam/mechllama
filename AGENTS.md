@@ -241,7 +241,3 @@ export CHROMA_HOST=production-chroma.example.com
 export OLLAMA_BASE_URL=http://production-ollama:11434
 # ... other variables as needed
 ```
-
-## License
-
-[Add your license information here]
