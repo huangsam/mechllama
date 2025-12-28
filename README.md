@@ -2,6 +2,8 @@
 
 Ask questions about mechanical keyboard switches and get AI-powered answers based on comprehensive reviews and scores.
 
+Uses <https://github.com/ThereminGoat/switch-scores> for data and LlamaIndex + Ollama for AI capabilities.
+
 ## Quick Start
 
 ### Prerequisites
