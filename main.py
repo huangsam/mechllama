@@ -41,13 +41,12 @@ load_dotenv()
 # deepseek-r1: Advanced reasoning model with 128K context window for comprehensive analysis
 # 120s timeout: Allows sufficient time for complex reasoning tasks
 Settings.embed_model = OllamaEmbedding(
-    model_name=os.getenv("OLLAMA_EMBEDDING_MODEL", "bge-m3"),
-    base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    model_name=os.getenv("OLLAMA_EMBEDDING_MODEL", "bge-m3"), base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 )
 Settings.llm = Ollama(
     model=os.getenv("OLLAMA_LLM_MODEL", "deepseek-r1:latest"),
     request_timeout=float(os.getenv("OLLAMA_TIMEOUT", "120.0")),
-    context_window=int(os.getenv("OLLAMA_CONTEXT_WINDOW", "128000"))
+    context_window=int(os.getenv("OLLAMA_CONTEXT_WINDOW", "128000")),
 )
 
 
