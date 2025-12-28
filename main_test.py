@@ -31,11 +31,7 @@ class TestGetScoreFilter:
 
     def test_push_feel_keyword_variations(self):
         """Test different keyword variations for push feel."""
-        queries = [
-            "highest pushfeel scores",
-            "best push feel switches",
-            "top push feel performance"
-        ]
+        queries = ["highest pushfeel scores", "best push feel switches", "top push feel performance"]
         for query in queries:
             result = get_score_filter(query)
             assert result is not None
@@ -115,11 +111,7 @@ class TestGetScoreFilter:
 
     def test_ranking_synonyms(self):
         """Test various ranking synonyms."""
-        synonyms = [
-            ("highest", "best", "top"),
-            ("mid", "medium", "middle", "average"),
-            ("lowest", "worst", "bottom")
-        ]
+        synonyms = [("highest", "best", "top"), ("mid", "medium", "middle", "average"), ("lowest", "worst", "bottom")]
 
         for category in ["sound", "push feel", "wobble", "context", "other"]:
             for rank_synonyms in synonyms:
@@ -133,7 +125,7 @@ class TestGetScoreFilter:
         queries = [
             "WHICH SWITCHES HAVE THE HIGHEST SOUND SCORES?",
             "which switches have the highest sound scores?",
-            "Which Switches Have The Highest Sound Scores?"
+            "Which Switches Have The Highest Sound Scores?",
         ]
         for query in queries:
             result = get_score_filter(query)
@@ -147,7 +139,7 @@ class TestGetScoreFilter:
             "Tell me about linear switches",
             "How do switches feel?",
             "What is the history of mechanical keyboards?",
-            "Compare red and blue switches"
+            "Compare red and blue switches",
         ]
         for query in no_match_queries:
             result = get_score_filter(query)
@@ -156,13 +148,7 @@ class TestGetScoreFilter:
     def test_partial_matches(self):
         """Test queries with partial keyword matches."""
         # These should not match because they don't contain ranking words
-        partial_queries = [
-            "Tell me about push feel",
-            "What is wobble?",
-            "Sound quality matters",
-            "Context is important",
-            "Other factors to consider"
-        ]
+        partial_queries = ["Tell me about push feel", "What is wobble?", "Sound quality matters", "Context is important", "Other factors to consider"]
         for query in partial_queries:
             result = get_score_filter(query)
             assert result is None, f"Should not match partial: {query}"

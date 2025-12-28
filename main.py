@@ -32,15 +32,29 @@ logger = logging.getLogger(__name__)
 
 # Global LlamaIndex settings for embeddings and LLM
 # Using Ollama for local, private processing without external API calls
-# bge-m3 is a multilingual embedding model suitable for text retrieval
-# deepseek-r1 is a reasoning model for generating natural language responses
+# bge-m3: High-quality multilingual embedding model (1024 dimensions) optimized for text retrieval
+# deepseek-r1: Advanced reasoning model with 128K context window for comprehensive analysis
+# 120s timeout: Allows sufficient time for complex reasoning tasks
 Settings.embed_model = OllamaEmbedding(model_name="bge-m3", base_url="http://localhost:11434")
 Settings.llm = Ollama(model="deepseek-r1:latest", request_timeout=120.0, context_window=128000)
 
 
 @click.group()
 def cli() -> None:
-    """CLI for indexing and querying switch scores with LlamaIndex."""
+    """
+    Mechanical Keyboard Switch Analysis CLI
+
+    A comprehensive tool for indexing and querying mechanical keyboard switch scores
+    using LlamaIndex RAG (Retrieval-Augmented Generation) with local AI models.
+
+    Commands:
+      ingest    Index PDF switch reviews enriched with CSV scores into vector database
+      search    Find switches by semantic similarity (returns raw document snippets)
+      query     Ask natural language questions (returns AI-synthesized answers)
+
+    All commands support metadata filtering for score-based queries (highest/mid/lowest
+    sound, push feel, wobble, context, and other scores).
+    """
     pass
 
 
@@ -75,33 +89,35 @@ def ingest(data_dir: str, csv_path: str, collection_name: str, batch_size: int) 
 
     # Load CSV scores for enrichment
     try:
-        df = pd.read_csv(csv_path, skiprows=7, header=None)  # Skip header rows, no header
-        # Manually set column names based on the CSV structure
+        # CSV has 7 header rows before data starts, so skip them
+        df = pd.read_csv(csv_path, skiprows=7, header=None)
+        # Manually set column names based on the CSV structure from switch-scores repo
+        # This CSV contains comprehensive switch evaluation data with multiple score categories
         column_names = [
-            "Rank",
-            "Switch Name",
-            "Date",
-            "Manufacturer",
-            "Type",
-            "Push Feel",
-            "Wobble",
-            "Sound",
-            "Context",
-            "Other",
-            "Timeless Total",
-            "Time Wtd. Total",
+            "Rank",  # Overall ranking position
+            "Switch Name",  # Switch model identifier
+            "Date",  # Review publication date
+            "Manufacturer",  # Company that makes the switch
+            "Type",  # Switch type (linear, tactile, clicky)
+            "Push Feel",  # Actuation feel score (0-35)
+            "Wobble",  # Stem stability score (0-25)
+            "Sound",  # Acoustic performance score (0-10)
+            "Context",  # Overall context/suitability score (0-20)
+            "Other",  # Miscellaneous factors score (0-10)
+            "Timeless Total",  # Time-weighted total score
+            "Time Wtd. Total",  # Alternative time-weighted calculation
             "",
-            "",
-            "Mfg Rank",
-            "Manufacturer Name",
-            "Switches Tested",
-            "Mfg Push Feel",
-            "Mfg Wobble",
-            "Mfg Sound",
-            "Mfg Context",
-            "Mfg Other",
-            "Mfg Timeless Total",
-            "Mfg Time Wtd. Total",
+            "",  # Empty columns
+            "Mfg Rank",  # Manufacturer ranking
+            "Manufacturer Name",  # Manufacturer name (duplicate)
+            "Switches Tested",  # Number of switches tested by manufacturer
+            "Mfg Push Feel",  # Manufacturer average push feel
+            "Mfg Wobble",  # Manufacturer average wobble
+            "Mfg Sound",  # Manufacturer average sound
+            "Mfg Context",  # Manufacturer average context
+            "Mfg Other",  # Manufacturer average other
+            "Mfg Timeless Total",  # Manufacturer average timeless total
+            "Mfg Time Wtd. Total",  # Manufacturer average time-weighted total
         ]
         df.columns = column_names
         # Columns: Rank, Switch Name, Date, Manufacturer, Type, Push Feel, Wobble, Sound, Context, Other, Timeless Total, Time Wtd. Total
@@ -216,9 +232,20 @@ def get_score_filter(query: str) -> Optional[Dict[str, Any]]:
     """
     Extract metadata filter from query based on score ranges.
 
+    Analyzes natural language queries to detect ranking requests (highest/mid/lowest)
+    and applies ChromaDB metadata filters accordingly. Supports all major switch
+    evaluation categories with empirically-derived score ranges.
+
+    Score Range Rationale:
+    - Highest: Top ~25% of possible scores (prioritizes exceptional switches)
+    - Mid: Middle ~50% of possible scores (balanced performance range)
+    - Lowest: Bottom ~25% of possible scores (identifies poor performers)
+
     Returns a ChromaDB where clause if filtering is detected, None otherwise.
     """
     # Configuration for score filtering - easily extensible
+    # Score ranges are derived from the switch-scores dataset analysis
+    # Each category has distinct scales and meaningful threshold boundaries
     SCORE_CONFIG = {
         "push feel": {
             "field": "Push Feel",
@@ -293,13 +320,23 @@ def get_score_filter(query: str) -> Optional[Dict[str, Any]]:
 @click.option("--top-k", default=20, help="Number of documents to retrieve for context.")
 def query(query: str, collection_name: str, top_k: int) -> None:
     """
-    Query the index with natural language and get LLM-synthesized response.
+    Query the index with natural language and get AI-synthesized response.
 
-    This command uses retrieval-augmented generation (RAG) with config-driven metadata filtering:
-    1. Detects ranking queries using configurable patterns and applies score filters
-    2. Retrieves relevant document chunks via similarity search
-    3. Passes chunks to deepseek-r1 LLM for context-aware response generation
-    4. Returns synthesized answer based on switch data
+    This command implements retrieval-augmented generation (RAG) with intelligent
+    metadata filtering for analytical queries:
+
+    1. Detects ranking queries (highest/mid/lowest + score category) and applies
+       ChromaDB metadata filters to pre-filter relevant documents
+    2. Retrieves document chunks via vector similarity search (filtered or unfiltered)
+    3. Passes chunks to deepseek-r1 LLM with custom prompts for context-aware synthesis
+    4. Returns comprehensive, objective answers with specific scores and comparisons
+
+    For score ranking queries, only switches meeting the criteria are considered.
+    For general queries, full collection search is performed without filtering.
+
+    Examples:
+      "Which switches have the highest sound scores?" → Filtered search
+      "Tell me about linear switches" → Unfiltered search
     """
     chroma_client = chromadb.HttpClient(host="localhost", port=8000)
     chroma_collection = chroma_client.get_collection(collection_name)
@@ -309,7 +346,8 @@ def query(query: str, collection_name: str, top_k: int) -> None:
     # Apply metadata filtering for score-based queries
     where_clause = get_score_filter(query)
 
-    # Create QA template for initial answer generation
+    # Create custom prompt templates optimized for switch analysis
+    # QA template: Guides initial answer generation with scoring context and objectivity requirements
     # {context_str}: Retrieved document chunks relevant to the query
     # {query_str}: The user's original question
     qa_template = PromptTemplate(
@@ -326,7 +364,8 @@ def query(query: str, collection_name: str, top_k: int) -> None:
         "Answer:"
     )
 
-    # Create refinement template to improve initial answers
+    # Refinement template: Improves answer quality by incorporating additional context
+    # Used by CompactAndRefine synthesizer to iteratively enhance responses
     # {query_str}: The user's original question (repeated for context)
     # {existing_answer}: The current answer being refined
     # {context_msg}: Additional retrieved context for refinement
@@ -343,7 +382,10 @@ def query(query: str, collection_name: str, top_k: int) -> None:
     # Create response synthesizer with custom prompts
     response_synthesizer = CompactAndRefine(text_qa_template=qa_template, refine_template=refine_template)
 
-    # Create query engine with custom synthesizer, increased retrieval count, and metadata filtering
+    # Create query engine with conditional filtering behavior:
+    # - If score filtering detected: Use RetrieverQueryEngine with metadata pre-filtering
+    # - If no filtering needed: Use standard query engine for full collection search
+    # This optimizes performance by reducing context size for analytical queries
     if where_clause:
         from llama_index.core.query_engine import RetrieverQueryEngine
 
