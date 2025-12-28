@@ -16,7 +16,9 @@ from typing import List, cast
 
 import chromadb
 import click
-from llama_index.core import Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex
+from llama_index.core import Settings, SimpleDirectoryReader, StorageContext, VectorStoreIndex, PromptTemplate
+from llama_index.core.response_synthesizers import CompactAndRefine
+from llama_index.core.response_synthesizers.type import ResponseMode
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
@@ -146,8 +148,39 @@ def query(query: str, collection_name: str) -> None:
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store)
 
-    # Create query engine that combines retrieval and generation
-    query_engine = index.as_query_engine()
+    # Create QA template for initial answer generation
+    # {context_str}: Retrieved document chunks relevant to the query
+    # {query_str}: The user's original question
+    qa_template = PromptTemplate(
+        "You are an expert assistant specializing in mechanical keyboard switches. "
+        "Based on the provided context from switch score sheets, answer the question accurately, "
+        "comprehensively, and objectively. Include specific details like scores, comparisons, "
+        "and manufacturer info when relevant. If the context doesn't fully answer the question, "
+        "state that clearly.\n\n"
+        "Context:\n{context_str}\n\n"
+        "Question: {query_str}\n\n"
+        "Answer:"
+    )
+
+    # Create refinement template to improve initial answers
+    # {query_str}: The user's original question (repeated for context)
+    # {existing_answer}: The current answer being refined
+    # {context_msg}: Additional retrieved context for refinement
+    refine_template = PromptTemplate(
+        "You are refining an answer about mechanical keyboard switches. "
+        "Original question: {query_str}\n\n"
+        "Existing answer: {existing_answer}\n\n"
+        "New context: {context_msg}\n\n"
+        "Refine the answer to be more accurate and detailed, incorporating the new context. "
+        "Maintain objectivity and include specific scores or comparisons.\n\n"
+        "Refined Answer:"
+    )
+
+    # Create response synthesizer with custom prompts
+    response_synthesizer = CompactAndRefine(text_qa_template=qa_template, refine_template=refine_template)
+
+    # Create query engine with custom synthesizer
+    query_engine = index.as_query_engine(response_synthesizer=response_synthesizer)
     response = query_engine.query(query)
     logger.info(f"Response: {response}")
 
