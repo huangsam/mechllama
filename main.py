@@ -250,7 +250,9 @@ def search(query: str, collection_name: str, top_k: int) -> None:
     for i, result in enumerate(results):
         # Log first 200 characters of each result for preview
         text_node = cast(TextNode, result.node)
-        logger.info(f"Result {i + 1}: {cast(str, text_node.text)[:200]}...")
+        result_text = cast(str, text_node.text)
+        logger.info(f"Result {i + 1}: {result_text[:200]}...")
+        click.echo(f"--- Result {i + 1} ---\n{result_text}\n")
 
 
 def get_score_filter(query: str) -> Optional[Union[Dict[str, Any], Dict[str, Dict[str, Any]]]]:
@@ -423,6 +425,7 @@ def query(query: str, collection_name: str, top_k: int) -> None:
         query_engine = index.as_query_engine(response_synthesizer=response_synthesizer, similarity_top_k=top_k)
     response = query_engine.query(query)
     logger.info(f"Response: {response}")
+    click.echo(str(response))
 
 
 if __name__ == "__main__":
