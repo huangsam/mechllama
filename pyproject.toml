@@ -19,8 +19,7 @@ dependencies = [
 line-length = 160
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "C", "Q"]
-extend-ignore = ["C901"]
+select = ["E", "F", "UP", "B", "I"]
 
 [tool.mypy]
 ignore_missing_imports = true

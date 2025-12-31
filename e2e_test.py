@@ -16,12 +16,20 @@ The test suite uses real questions about mechanical keyboard switches with:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, TypedDict
 
 import click.testing
 import pytest
 
 from main import cli, get_chroma_client
+
+
+class TestQuestion(TypedDict):
+    question: str
+    category: str
+    expected_keywords: list[str]
+    description: str
+
 
 # Configure logging for test visibility
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 # Test dataset for comprehensive CLI evaluation
-TEST_QUESTIONS = [
+TEST_QUESTIONS: list[TestQuestion] = [
     {
         "question": "Which switches have the highest sound scores?",
         "category": "score_filtering",
@@ -129,9 +137,7 @@ class TestE2ECliEvaluation:
         assert "query" in result.output.lower()
         logger.info("✓ Query command available")
 
-    def test_query_with_score_filtering(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_with_score_filtering(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test query with score filtering (highest sound)."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -146,9 +152,7 @@ class TestE2ECliEvaluation:
         logger.info("✓ Query with sound score filtering successful")
         logger.info(f"Response preview: {result.output[:200]}...")
 
-    def test_query_with_push_feel_filtering(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_with_push_feel_filtering(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test query with push feel filtering."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -162,9 +166,7 @@ class TestE2ECliEvaluation:
         assert len(result.output) > 0
         logger.info("✓ Query with push feel filtering successful")
 
-    def test_query_semantic_search(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_semantic_search(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test semantic search without score filtering."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -178,9 +180,7 @@ class TestE2ECliEvaluation:
         assert len(result.output) > 0
         logger.info("✓ Semantic search query successful")
 
-    def test_query_general_knowledge(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_general_knowledge(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test general knowledge question about switches."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -209,9 +209,7 @@ class TestE2ECliEvaluation:
         logger.info("✓ Search command successful")
         logger.info(f"Search results: {result.output[:200]}...")
 
-    def test_query_response_not_empty(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_response_not_empty(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test that query responses are not empty."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -226,9 +224,7 @@ class TestE2ECliEvaluation:
             assert len(result.output.strip()) > 0, f"Empty response for: {test_q['question']}"
             logger.info(f"✓ Non-empty response for: {test_q['description']}")
 
-    def test_query_response_contains_context(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_query_response_contains_context(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test that responses reference specific switches or scores."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -242,15 +238,12 @@ class TestE2ECliEvaluation:
         # Response should contain meaningful switch information
         response = result.output.lower()
         # Check for evidence of retrieved context (numbers, switch names, or descriptive words)
-        assert any(
-            keyword in response
-            for keyword in ["switch", "score", "sound", "0-10", "based", "context", "retrieved"]
-        ), "Response doesn't seem to use retrieved context"
+        assert any(keyword in response for keyword in ["switch", "score", "sound", "0-10", "based", "context", "retrieved"]), (
+            "Response doesn't seem to use retrieved context"
+        )
         logger.info("✓ Response contains contextual information")
 
-    def test_multiple_queries_consistency(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_multiple_queries_consistency(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test that same query produces consistent results."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -271,9 +264,7 @@ class TestE2ECliEvaluation:
         assert len(result1.output) > 0 and len(result2.output) > 0
         logger.info("✓ Query execution is consistent across runs")
 
-    def test_custom_collection_name(
-        self, cli_runner: click.testing.CliRunner, collection_populated: bool
-    ) -> None:
+    def test_custom_collection_name(self, cli_runner: click.testing.CliRunner, collection_populated: bool) -> None:
         """Test querying with custom collection name."""
         if not collection_populated:
             pytest.skip("ChromaDB collection not populated - run 'uv run python main.py ingest' first")
@@ -339,9 +330,7 @@ class TestRAGQualityEvaluation:
         except Exception:
             return False
 
-    def test_response_relevance(
-        self, collection_populated: bool
-    ) -> None:
+    def test_response_relevance(self, collection_populated: bool) -> None:
         """
         Test that responses are relevant to the query.
 
@@ -427,14 +416,14 @@ class TestDataQualityAssessment:
         return get_chroma_client()
 
     @pytest.fixture(scope="class")
-    def collection(self, chroma_client: Any) -> Optional[Any]:
+    def collection(self, chroma_client: Any) -> Any | None:
         """Get the collection if available."""
         try:
             return chroma_client.get_collection("switch_scores_enriched_numeric")
         except Exception:
             return None
 
-    def test_collection_exists(self, collection: Optional[Any]) -> None:
+    def test_collection_exists(self, collection: Any | None) -> None:
         """Test that collection exists and is accessible."""
         if collection is None:
             pytest.skip("Collection not available - run 'uv run python main.py ingest' first")
@@ -442,7 +431,7 @@ class TestDataQualityAssessment:
         assert collection is not None
         logger.info("✓ Collection is accessible")
 
-    def test_collection_has_documents(self, collection: Optional[Any]) -> None:
+    def test_collection_has_documents(self, collection: Any | None) -> None:
         """Test that collection contains documents."""
         if collection is None:
             pytest.skip("Collection not available")
@@ -451,7 +440,7 @@ class TestDataQualityAssessment:
         assert count > 0, "Collection is empty"
         logger.info(f"✓ Collection contains {count} documents")
 
-    def test_collection_metadata_enrichment(self, collection: Optional[Any]) -> None:
+    def test_collection_metadata_enrichment(self, collection: Any | None) -> None:
         """Test that documents have metadata (score enrichment)."""
         if collection is None:
             pytest.skip("Collection not available")
@@ -465,7 +454,7 @@ class TestDataQualityAssessment:
         else:
             logger.warning("⚠ No metadata found in documents")
 
-    def test_retrieval_quality_sample(self, collection: Optional[Any]) -> None:
+    def test_retrieval_quality_sample(self, collection: Any | None) -> None:
         """Test retrieval by checking for expected score fields."""
         if collection is None:
             pytest.skip("Collection not available")

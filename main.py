@@ -14,7 +14,7 @@ push feel, wobble, sound, context, other factors, and score tables.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, cast
 
 import chromadb
 import click
@@ -181,7 +181,7 @@ def ingest(data_dir: str, csv_path: str, collection_name: str, batch_size: int) 
 
     for i in range(0, total_files, batch_size):
         batch_files = reader.input_files[i : i + batch_size]
-        documents: List = []
+        documents: list = []
         for file_path in batch_files:
             try:
                 # Load individual PDF to handle parsing errors per file
@@ -255,7 +255,7 @@ def search(query: str, collection_name: str, top_k: int) -> None:
         click.echo(f"--- Result {i + 1} ---\n{result_text}\n")
 
 
-def get_score_filter(query: str) -> Optional[Union[Dict[str, Any], Dict[str, Dict[str, Any]]]]:
+def get_score_filter(query: str) -> dict[str, Any] | dict[str, dict[str, Any]] | None:
     """
     Extract metadata filter from query based on score ranges.
 
@@ -323,20 +323,20 @@ def get_score_filter(query: str) -> Optional[Union[Dict[str, Any], Dict[str, Dic
     }
 
     query_lower = query.lower()
-    where_clause: Optional[Union[Dict[str, Any], Dict[str, Dict[str, Any]]]] = None
+    where_clause: dict[str, Any] | dict[str, dict[str, Any]] | None = None
 
     for _, config in SCORE_CONFIG.items():
-        if any(keyword in query_lower for keyword in cast(List[str], config["keywords"])):
+        if any(keyword in query_lower for keyword in cast(list[str], config["keywords"])):
             # Check for ranking adjectives
             if any(word in query_lower for word in ["highest", "best", "top"]):
-                ranges_dict = cast(Dict[str, Any], config["ranges"])
+                ranges_dict = cast(dict[str, Any], config["ranges"])
                 where_clause = {cast(str, config["field"]): ranges_dict["highest"]}
                 break
             elif any(word in query_lower for word in ["mid", "medium", "middle", "average"]):
-                where_clause = cast(Dict[str, Any], config["ranges"])["mid"]
+                where_clause = cast(dict[str, Any], config["ranges"])["mid"]
                 break
             elif any(word in query_lower for word in ["lowest", "worst", "bottom"]):
-                ranges_dict = cast(Dict[str, Any], config["ranges"])
+                ranges_dict = cast(dict[str, Any], config["ranges"])
                 where_clause = {cast(str, config["field"]): ranges_dict["lowest"]}
                 break
 
